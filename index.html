@@ -146,6 +146,40 @@
             <p class="text-lg text-text-light">Chuyển đổi số đếm tiếng Nhật (0 - 9,999,999)</p>
         </div>
 
+        <!-- Khu vực tùy chỉnh giọng đọc -->
+        <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <p class="text-xl font-bold text-primary-indigo mb-3 flex items-center">
+                <i class="fas fa-sliders-h mr-2"></i>Tùy Chỉnh Giọng Đọc
+            </p>
+            
+            <!-- Chọn Giọng Đọc --><div class="mb-4">
+                <label for="voiceSelect" class="block text-lg font-semibold text-text-dark mb-2">
+                    <i class="fas fa-microphone-alt mr-2 text-indigo-500"></i>Giọng Đọc:
+                </label>
+                <select id="voiceSelect" class="input-field w-full text-base text-text-dark">
+                    <!-- Tùy chọn sẽ được điền bằng JavaScript -->
+                    <option value="-1">Đang tải giọng đọc...</option>
+                </select>
+            </div>
+
+            <!-- Điều chỉnh Tốc Độ --><div class="mb-4">
+                <label for="rateInput" class="block text-lg font-semibold text-text-dark mb-2 flex justify-between items-center">
+                    <span><i class="fas fa-tachometer-alt mr-2 text-indigo-500"></i>Tốc Độ:</span>
+                    <span id="rateValue" class="text-text-light font-normal">0.9</span>
+                </label>
+                <input type="range" id="rateInput" min="0.1" max="2.0" step="0.1" value="0.9" class="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer range-lg">
+            </div>
+
+            <!-- Điều chỉnh Cao Độ --><div class="mb-2">
+                <label for="pitchInput" class="block text-lg font-semibold text-text-dark mb-2 flex justify-between items-center">
+                    <span><i class="fas fa-wave-square mr-2 text-indigo-500"></i>Cao Độ (Pitch):</span>
+                    <span id="pitchValue" class="text-text-light font-normal">1.0</span>
+                </label>
+                <input type="range" id="pitchInput" min="0" max="2" step="0.1" value="1.0" class="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer range-lg">
+            </div>
+        </div>
+
+
         <!-- Khu vực nhập liệu --><div class="space-y-5 mb-8">
             <label for="numberInput" class="block text-lg font-semibold text-text-dark">
                 <i class="fas fa-hashtag mr-2 text-primary-indigo"></i>Nhập Số Cần Chuyển Đổi:
@@ -201,6 +235,10 @@
         let isSpeaking = false; 
         
         const MAX_NUMBER_LIMIT = 9999999;
+        
+        // Biến toàn cục để lưu danh sách giọng đọc và index giọng đang chọn
+        let voices = [];
+        let selectedVoiceIndex = -1; // -1: chưa chọn
         
         // --- HẰNG SỐ ROMAJI CHO CHUYỂN ĐỔI ---
         const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
@@ -301,12 +339,58 @@
         }
 
         // ------------------------------------
-        // --- LOGIC PHÁT ÂM (DÙNG WEB SPEECH API) ---
+        // --- LOGIC QUẢN LÝ VÀ PHÁT ÂM GIỌNG ĐỌC ---
         // ------------------------------------
         
-        // --- PHIÊN BẢN KHÔNG DÙNG API: DÙNG Web Speech API ---
+        function populateVoiceList() {
+            if (!('speechSynthesis' in window)) return;
+            
+            voices = window.speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+
+            // Xóa tùy chọn cũ
+            voiceSelect.innerHTML = '';
+            
+            let jaVoicesFound = 0;
+            let firstJaVoiceIndex = -1;
+
+            for (let i = 0; i < voices.length; i++) {
+                // Lọc chỉ lấy giọng tiếng Nhật (ja)
+                if (voices[i].lang.startsWith('ja')) {
+                    const option = document.createElement('option');
+                    // Hiển thị tên giọng và ngôn ngữ
+                    option.textContent = voices[i].name + ' (' + voices[i].lang + ')';
+                    
+                    // Lưu index trong mảng voices gốc vào value
+                    option.value = i; 
+
+                    voiceSelect.appendChild(option);
+                    jaVoicesFound++;
+                    
+                    if (firstJaVoiceIndex === -1) {
+                        firstJaVoiceIndex = i;
+                    }
+                }
+            }
+            
+            // Thiết lập giọng mặc định (giọng tiếng Nhật đầu tiên tìm thấy)
+            if (jaVoicesFound > 0) {
+                selectedVoiceIndex = firstJaVoiceIndex;
+                voiceSelect.value = firstJaVoiceIndex;
+                voiceSelect.disabled = false;
+            } else {
+                // Trường hợp không tìm thấy giọng Nhật nào
+                const option = document.createElement('option');
+                option.textContent = 'Không tìm thấy giọng Nhật Bản (ja-JP)';
+                option.value = -1;
+                voiceSelect.appendChild(option);
+                voiceSelect.disabled = true;
+                selectedVoiceIndex = -1;
+                showMessage("Cảnh báo: Trình duyệt không có giọng đọc tiếng Nhật (ja-JP). Sẽ sử dụng giọng mặc định có sẵn (có thể không phải tiếng Nhật).", true);
+            }
+        }
+        
         async function speakRomaji() {
-            // Kiểm tra xem trình duyệt có hỗ trợ Web Speech API không
             if (!('speechSynthesis' in window)) {
                 showMessage("Lỗi: Trình duyệt của bạn không hỗ trợ Web Speech API.", true);
                 return;
@@ -317,6 +401,10 @@
             const speakerButton = document.getElementById('speakerButton');
             const speakerIcon = document.getElementById('speakerIcon');
             const speakerText = document.getElementById('speakerText');
+            // Lấy giá trị tốc độ và cao độ từ input
+            const rateInput = document.getElementById('rateInput');
+            const pitchInput = document.getElementById('pitchInput');
+
 
             if (!romajiText) {
                 showMessage("Không có kết quả Romaji để đọc.", true);
@@ -324,10 +412,15 @@
             }
 
             if (isSpeaking) {
-                // Nếu đang nói, dừng lại (chức năng Toggle)
+                // Nếu đang nói, dừng lại
                 window.speechSynthesis.cancel();
                 // onend sẽ được gọi để reset trạng thái
                 return;
+            }
+            
+            // Đảm bảo voices đã được tải (dù có thể là mảng rỗng nếu không tìm thấy)
+            if (voices.length === 0) {
+                populateVoiceList();
             }
 
             // Đổi trạng thái UI sang “đang đọc”
@@ -340,10 +433,20 @@
             try {
                 // Tạo đối tượng phát âm
                 const utterance = new SpeechSynthesisUtterance(romajiText);
-                utterance.lang = 'ja-JP'; // Quan trọng: Đặt giọng Nhật Bản
-                utterance.rate = 0.9;     // Tốc độ đọc
-                utterance.pitch = 1.0;    // Cao độ
+                // Gán giá trị rate và pitch từ thanh trượt
+                utterance.rate = parseFloat(rateInput.value); 
+                utterance.pitch = parseFloat(pitchInput.value); 
                 
+                // Gán giọng đọc đã chọn
+                if (selectedVoiceIndex !== -1 && voices.length > selectedVoiceIndex) {
+                    const voice = voices[selectedVoiceIndex];
+                    utterance.voice = voice;
+                    utterance.lang = voice.lang; // Đặt ngôn ngữ theo giọng
+                } else {
+                    // Giọng mặc định nếu không tìm thấy hoặc chưa chọn
+                    utterance.lang = 'ja-JP'; 
+                }
+
                 // Sự kiện khi phát xong
                 utterance.onend = () => {
                     isSpeaking = false;
@@ -352,7 +455,7 @@
                     speakerText.textContent = 'Đọc';
                 };
                 
-                // Sự kiện lỗi (ví dụ không tìm thấy giọng phù hợp)
+                // Sự kiện lỗi
                 utterance.onerror = (event) => {
                     console.error('Lỗi đọc:', event.error);
                     showMessage(`Lỗi phát âm: ${event.error}. Vui lòng thử lại!`, true);
@@ -422,6 +525,10 @@
                 document.getElementById('messageBox').classList.add('hidden');
                 resultBox.classList.add('hidden');
 
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                }
+
                 if (!rawInput) {
                     showMessage("Vui lòng nhập một số.", true);
                     return;
@@ -469,12 +576,25 @@
             }
         }
         
-        // Gắn sự kiện cho các nút
+        // Cập nhật giá trị hiển thị cho thanh trượt
+        function updateSliderValue(sliderId, valueId) {
+            const slider = document.getElementById(sliderId);
+            const valueSpan = document.getElementById(valueId);
+            if (slider && valueSpan) {
+                valueSpan.textContent = slider.value;
+            }
+        }
+
+        // Gắn sự kiện cho các nút và thanh trượt
         document.addEventListener('DOMContentLoaded', () => {
             const convertButton = document.getElementById('convertButton');
             const numberInput = document.getElementById('numberInput');
             const copyButton = document.getElementById('copyButton');
             const speakerButton = document.getElementById('speakerButton');
+            const voiceSelect = document.getElementById('voiceSelect');
+            const rateInput = document.getElementById('rateInput');
+            const pitchInput = document.getElementById('pitchInput');
+
 
             convertButton.addEventListener('click', handleConversion);
             numberInput.addEventListener('keydown', (e) => {
@@ -483,9 +603,28 @@
                 }
             });
             copyButton.addEventListener('click', copyResult); 
-            
-            // Gắn sự kiện cho nút Loa
             speakerButton.addEventListener('click', speakRomaji);
+            
+            // Xử lý sự kiện khi thay đổi giọng đọc
+            voiceSelect.addEventListener('change', (event) => {
+                // Giá trị của option là index trong mảng voices gốc
+                selectedVoiceIndex = parseInt(event.target.value, 10); 
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                }
+            });
+
+            // Xử lý sự kiện khi thay đổi Tốc độ và Cao độ
+            rateInput.addEventListener('input', () => updateSliderValue('rateInput', 'rateValue'));
+            pitchInput.addEventListener('input', () => updateSliderValue('pitchInput', 'pitchValue'));
+            
+            // 1. Tải giọng đọc ban đầu
+            populateVoiceList();
+
+            // 2. Lắng nghe sự kiện khi danh sách giọng đọc được tải xong (đặc biệt quan trọng với Chrome)
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                window.speechSynthesis.onvoiceschanged = populateVoiceList;
+            }
         });
     </script>
 </body>
