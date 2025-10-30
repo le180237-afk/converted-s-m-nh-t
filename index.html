@@ -235,6 +235,9 @@
             // Phần Unit (Đơn vị 0-9999)
             // Chỉ đọc phần đơn vị nếu nó khác 0
             if (unitPart > 0) {
+                // Nếu unitPart là 1000, 2000, 3000... thì convertFourDigits sẽ trả về sen, nisen, sanzen...
+                // Ví dụ: 10060 -> ichiman + rokujuu
+                // Ví dụ: 15000 -> ichiman + gosen
                 result += convertFourDigits(unitPart);
             }
             
@@ -242,64 +245,95 @@
         }
 
         // --- HÀM XỬ LÝ SỰ KIỆN GIAO DIỆN ---
-        document.getElementById('convertButton').addEventListener('click', handleConversion);
-        document.getElementById('numberInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                handleConversion();
+        document.addEventListener('DOMContentLoaded', () => {
+            const convertButton = document.getElementById('convertButton');
+            const numberInput = document.getElementById('numberInput');
+            
+            if (convertButton) {
+                convertButton.addEventListener('click', handleConversion);
+            }
+            
+            if (numberInput) {
+                numberInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        handleConversion();
+                    }
+                });
             }
         });
 
+
         function showMessage(text, isError = false) {
             const messageBox = document.getElementById('messageBox');
-            const messageTextSpan = messageBox.querySelector('span');
-            const messageIcon = messageBox.querySelector('i');
+            const messageTextSpan = document.getElementById('messageText').querySelector('span');
+            const messageIcon = document.getElementById('messageText').querySelector('i');
+            
+            if (!messageBox || !messageTextSpan || !messageIcon) {
+                console.error("Không tìm thấy các phần tử thông báo.");
+                return;
+            }
 
             messageTextSpan.textContent = text;
-            messageBox.classList.remove('hidden');
+            
+            // Đặt lại các class cơ bản
+            messageBox.className = 'mt-4 p-4 text-sm rounded-xl border';
 
             if (isError) {
-                messageBox.className = 'mt-4 p-4 text-sm rounded-xl border border-red-300 bg-red-50 text-red-700 hidden';
-                messageBox.classList.remove('hidden');
+                messageBox.classList.add('border-red-300', 'bg-red-50', 'text-red-700');
                 messageIcon.className = 'fas fa-exclamation-triangle mr-2';
             } else {
-                messageBox.className = 'mt-4 p-4 text-sm rounded-xl border border-green-300 bg-green-50 text-green-700 hidden';
-                messageBox.classList.remove('hidden');
+                messageBox.classList.add('border-green-300', 'bg-green-50', 'text-green-700');
                 messageIcon.className = 'fas fa-info-circle mr-2';
             }
+            messageBox.classList.remove('hidden');
         }
 
         function handleConversion() {
-            const inputElement = document.getElementById('numberInput');
-            const resultBox = document.getElementById('resultBox');
-            const resultOutput = document.getElementById('resultOutput');
-            const rawInput = inputElement.value.trim();
-            
-            // Ẩn các thông báo cũ
-            document.getElementById('messageBox').classList.add('hidden');
-            resultBox.classList.add('hidden');
+            try {
+                const inputElement = document.getElementById('numberInput');
+                const resultBox = document.getElementById('resultBox');
+                const resultOutput = document.getElementById('resultOutput');
+                
+                if (!inputElement || !resultBox || !resultOutput) {
+                     console.error("Không tìm thấy các phần tử UI cần thiết.");
+                     showMessage("Lỗi hệ thống: Không tìm thấy các trường nhập liệu/kết quả.", true);
+                     return;
+                }
 
-            if (!rawInput) {
-                showMessage("Vui lòng nhập một số.", true);
-                return;
+                const rawInput = inputElement.value.trim();
+                
+                // Ẩn các thông báo cũ
+                document.getElementById('messageBox').classList.add('hidden');
+                resultBox.classList.add('hidden');
+
+                if (!rawInput) {
+                    showMessage("Vui lòng nhập một số.", true);
+                    return;
+                }
+
+                const number = parseInt(rawInput, 10);
+                
+                // Kiểm tra giới hạn và định dạng (0 đến 9,999,999)
+                if (isNaN(number) || number < 0 || number > MAX_NUMBER_LIMIT) {
+                    showMessage(`Số phải là số nguyên dương và nằm trong phạm vi từ 0 đến ${MAX_NUMBER_LIMIT.toLocaleString('en-US')}.`, true);
+                    return;
+                }
+
+                // Tiến hành chuyển đổi
+                const romajiResult = convertNumberToRomaji(number);
+                
+                // Hiển thị kết quả
+                resultOutput.textContent = romajiResult;
+                resultBox.classList.remove('hidden');
+                
+                // Xóa thông báo nếu có
+                document.getElementById('messageBox').classList.add('hidden');
+
+            } catch (error) {
+                // Thêm cơ chế bắt lỗi để in ra Console nếu có lỗi logic xảy ra
+                console.error("Lỗi trong quá trình chuyển đổi:", error);
+                showMessage("Đã xảy ra lỗi hệ thống trong quá trình chuyển đổi. Vui lòng kiểm tra Console.", true);
             }
-
-            const number = parseInt(rawInput, 10);
-            
-            // Kiểm tra giới hạn và định dạng (0 đến 9,999,999)
-            if (isNaN(number) || number < 0 || number > MAX_NUMBER_LIMIT) {
-                showMessage(`Số phải là số nguyên dương và nằm trong phạm vi từ 0 đến ${MAX_NUMBER_LIMIT.toLocaleString('en-US')}.`, true);
-                return;
-            }
-
-            // Tiến hành chuyển đổi
-            const romajiResult = convertNumberToRomaji(number);
-            
-            // Hiển thị kết quả
-            resultOutput.textContent = romajiResult;
-            resultBox.classList.remove('hidden');
-            
-            // Xóa thông báo nếu có
-            document.getElementById('messageBox').classList.add('hidden');
         }
     </script>
 </body>
