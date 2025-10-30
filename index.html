@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chuyển Đổi Số sang Romaji (0 - 9,999,999)</title>
+    <!-- Các meta tag giúp ứng dụng hoạt động tốt hơn trên thiết bị di động (PWA readiness) --><meta name="theme-color" content="#6366F1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <!-- Tải Tailwind CSS để tạo giao diện đẹp và responsive --><script src="https://cdn.tailwindcss.com"></script>
     <!-- Tải Google Fonts: Inter cho typography hiện đại --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tải Font Awesome cho các icon --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -12,14 +16,30 @@
         body {
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
+            /* Gradient background */
             background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+            
+            /* Thêm logo ĐH Bách Khoa Hà Nội vào background */
+            /* === ĐÂY LÀ ĐƯỜNG LINK LOGO TÔI TÌM ĐƯỢC - BẠN CÓ THỂ THAY THẾ === */
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i.svg/1200px-Logo_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i.svg.png'); 
+            background-size: 200px; /* Kích thước logo */
+            background-repeat: no-repeat; /* Không lặp lại */
+            background-position: center bottom -50px; /* Vị trí: Giữa, phía dưới, hơi dịch xuống */
+            background-attachment: fixed; /* Giữ logo cố định khi cuộn */
+            
+            /* Tùy chỉnh độ mờ và chế độ hòa trộn để logo trông hài hòa */
+            background-blend-mode: luminosity; /* Hòa trộn với màu nền */
+            opacity: 0.6; /* Điều chỉnh độ mờ của logo */
         }
+
         #app-container {
             background-color: #ffffff;
             border-radius: 1.5rem;
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
             padding: 2.5rem;
             animation: fadeIn 0.8s ease-out;
+            position: relative; /* Đảm bảo nội dung nằm trên logo */
+            z-index: 10;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -105,8 +125,7 @@
             <p class="text-lg text-text-light">Chuyển đổi số đếm tiếng Nhật (0 - 9,999,999)</p>
         </div>
 
-        <!-- Khu vực nhập liệu -->
-        <div class="space-y-5 mb-8">
+        <!-- Khu vực nhập liệu --><div class="space-y-5 mb-8">
             <label for="numberInput" class="block text-lg font-semibold text-text-dark">
                 <i class="fas fa-hashtag mr-2 text-primary-indigo"></i>Nhập Số Cần Chuyển Đổi:
             </label>
@@ -120,14 +139,12 @@
             </button>
         </div>
 
-        <!-- Khu vực hiển thị kết quả -->
-        <div id="resultBox" class="p-6 mt-6 hidden">
+        <!-- Khu vực hiển thị kết quả --><div id="resultBox" class="p-6 mt-6 hidden">
             <div class="flex justify-between items-start mb-3">
                 <p class="text-xl text-text-dark font-medium">
                     <i class="fas fa-check-circle mr-2 text-primary-indigo"></i>Kết Quả Romaji:
                 </p>
-                <!-- Nút Sao Chép -->
-                <button id="copyButton" 
+                <!-- Nút Sao Chép --><button id="copyButton" 
                         class="copy-button bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600 transition-colors duration-200"
                         title="Sao chép kết quả">
                     <i class="fas fa-copy mr-1"></i>Sao chép
@@ -136,8 +153,7 @@
             <div id="resultOutput" class="text-text-dark"></div>
         </div>
 
-        <!-- Khu vực hiển thị thông báo lỗi/cảnh báo -->
-        <div id="messageBox" class="mt-4 p-4 text-sm hidden" role="alert">
+        <!-- Khu vực hiển thị thông báo lỗi/cảnh báo --><div id="messageBox" class="mt-4 p-4 text-sm hidden" role="alert">
             <p id="messageText" class="flex items-center">
                 <i class="fas mr-2"></i>
                 <span></span>
@@ -146,10 +162,9 @@
         
     </div>
 
-    <!-- Khu vực Footer (Thông tin cá nhân) -->
-    <footer class="text-center mt-6 text-text-light text-sm p-4 w-full max-w-lg">
+    <!-- Khu vực Footer (Thông tin cá nhân) --><footer class="text-center mt-6 text-text-light text-sm p-4 w-full max-w-lg">
         <p class="font-bold text-text-dark mb-1">ĐH Bách Khoa Hà Nội</p>
-        <p>Phát triển bởi: Lợi Lê 202516839 IT E6 02</p>
+        <p>Phát triển bởi: Lợi Lê IT E6</p>
     </footer>
 
     <script>
@@ -160,11 +175,6 @@
         const unit_sen = "sen";     // 1,000
         const unit_man = "man";     // 10,000
         const MAX_NUMBER_LIMIT = 9999999;
-
-        // Hàm tiện ích để thêm dấu cách nếu chuỗi không rỗng
-        function appendWithSpace(base, unit) {
-            return base + (base.length > 0 ? " " : "") + unit;
-        }
 
         // 1. Hàm chuyển đổi 0-999 (hàng trăm, chục, đơn vị)
         function convertThreeDigits(number) {
@@ -260,10 +270,11 @@
                 let manReading;
                 // 10,000 được đọc là "ichiman"
                 if (manPart === 1) {
-                    manReading = "ichi man"; // Thêm dấu cách sau "ichi"
+                    manReading = "ichi man"; // Đọc là ichi man (có dấu cách)
                 } else {
                     // 20,000 (2 man) đến 9,990,000 (999 man)
                     let baseReading = convertThreeDigits(manPart);
+                    // Base Reading đã có dấu cách (ví dụ: "kyuu hyaku kyuu juu kyuu")
                     manReading = baseReading + " " + unit_man; // Thêm dấu cách trước "man"
                 }
                 parts.push(manReading);
