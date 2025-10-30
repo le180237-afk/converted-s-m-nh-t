@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chuyển Đổi Số sang Romaji (0 - 9,999,999)</title>
+    <!-- Tải Tailwind CSS để tạo giao diện đẹp và responsive --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải Google Fonts: Inter cho typography hiện đại --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tải Font Awesome cho các icon --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif; /* Áp dụng font Inter */
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%); /* Nền gradient nhẹ */
+        }
+        #app-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Bo góc nhiều hơn */
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1); /* Đổ bóng sâu hơn */
+            padding: 2.5rem; /* Tăng padding */
+            animation: fadeIn 0.8s ease-out; /* Hiệu ứng tải trang */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-primary {
+            transition: all 0.2s ease-in-out;
+            background-image: linear-gradient(45deg, #4F46E5 0%, #6366F1 100%); /* Gradient cho button */
+            border: none;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 8px 15px rgba(99, 102, 241, 0.4); /* Đổ bóng cho button khi hover */
+            transform: translateY(-2px); /* Nhấc button lên nhẹ */
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .input-field {
+            border: 1px solid #cbd5e1; /* Màu border xám nhạt */
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem; /* Bo góc cho input */
+            transition: all 0.2s ease-in-out;
+        }
+        .input-field:focus {
+            border-color: #6366F1; /* Màu xanh tím khi focus */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Đổ bóng focus */
+            outline: none;
+        }
+        #resultBox {
+            background-color: #e0f2fe; /* Nền xanh nhạt cho kết quả */
+            border-left: 5px solid #3b82f6; /* Viền xanh đậm hơn */
+            border-radius: 0.75rem;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* Đổ bóng inset nhẹ */
+            animation: slideIn 0.5s ease-out; /* Hiệu ứng hiển thị kết quả */
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #resultOutput {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #1f2937; /* Màu chữ đậm hơn */
+            font-size: 2.25rem; /* Kích thước lớn hơn */
+            line-height: 1.2;
+        }
+        #messageBox {
+            border-radius: 0.75rem;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-indigo': '#6366F1',
+                        'secondary-blue-light': '#eff6ff',
+                        'text-dark': '#1f2937',
+                        'text-light': '#4b5563',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div id="app-container" class="w-full max-w-lg">
+        <div class="text-center mb-8">
+            <i class="fas fa-language text-primary-indigo text-5xl mb-4"></i> 
+            <h1 class="text-4xl font-extrabold text-text-dark mb-3">Romaji Converter</h1>
+            <p class="text-lg text-text-light">Chuyển đổi số đếm tiếng Nhật (0 - 9,999,999)</p>
+        </div>
+
+        <!-- Khu vực nhập liệu -->
+        <div class="space-y-5 mb-8">
+            <label for="numberInput" class="block text-lg font-semibold text-text-dark">
+                <i class="fas fa-hashtag mr-2 text-primary-indigo"></i>Nhập Số Cần Chuyển Đổi:
+            </label>
+            <input type="number" id="numberInput" placeholder="Ví dụ: 10000, 350000, 9999999" 
+                   class="input-field w-full text-lg text-text-dark"
+                   min="0" max="9999999">
+            
+            <button id="convertButton" 
+                    class="btn-primary w-full text-white py-3 rounded-xl font-bold text-xl tracking-wide">
+                <i class="fas fa-arrow-right mr-2"></i>Chuyển Đổi Ngay
+            </button>
+        </div>
+
+        <!-- Khu vực hiển thị kết quả -->
+        <div id="resultBox" class="p-6 mt-6 hidden">
+            <p class="text-xl text-text-dark font-medium mb-3">
+                <i class="fas fa-check-circle mr-2 text-primary-indigo"></i>Kết Quả Romaji:
+            </p>
+            <div id="resultOutput" class="text-text-dark"></div>
+        </div>
+
+        <!-- Khu vực hiển thị thông báo lỗi/cảnh báo -->
+        <div id="messageBox" class="mt-4 p-4 text-sm hidden" role="alert">
+            <p id="messageText" class="flex items-center">
+                <i class="fas mr-2"></i>
+                <span></span>
+            </p>
+        </div>
+        
+    </div>
+
+    <script>
+        // Cập nhật các hằng số (Romaji) cho logic chuyển đổi
+        const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
+        const unit_hyaku = "hyaku"; // 100
+        const unit_juu = "juu";     // 10
+        const unit_sen = "sen";     // 1,000
+        const unit_man = "man";     // 10,000
+        const MAX_NUMBER_LIMIT = 9999999;
+
+        // 1. Hàm chuyển đổi 0-999 (hàng trăm, chục, đơn vị)
+        function convertThreeDigits(number) {
+            if (number === 0) return "";
+            
+            let result = "";
+            const h = Math.floor(number / 100);
+            const j = Math.floor((number % 100) / 10);
+            const d = number % 10;
+
+            // Hàng trăm (Hyaku)
+            if (h > 0) {
+                if (h === 3) {
+                    result += ichikyuu[h] + "byaku"; // 300 - sanbyaku
+                } else if (h === 6) {
+                    result += "roppyaku"; // 600 - roppyaku
+                } else if (h === 😎 {
+                    result += "happyaku"; // 800 - happyaku
+                } else if (h === 1) {
+                    result += unit_hyaku; // 100 - hyaku
+                } else {
+                    result += ichikyuu[h] + unit_hyaku; // 200 - nihyaku
+                }
+            }
+
+            // Hàng chục (Juu)
+            if (j > 0) {
+                if (j === 1) {
+                    result += unit_juu; // 10 - juu
+                } else {
+                    result += ichikyuu[j] + unit_juu; // 20 - nijuu
+                }
+            }
+
+            // Hàng đơn vị 
+            if (d > 0) {
+                result += ichikyuu[d];
+            }
+
+            return result;
+        }
+
+        // 2. Hàm chuyển đổi 0-9999 (hàng nghìn, trăm, chục, đơn vị)
+        function convertFourDigits(number) {
+            if (number === 0) return "";
+
+            const sen = Math.floor(number / 1000); // Hàng nghìn
+            const remainder = number % 1000;       // Hàng trăm/chục/đơn vị
+            let result = "";
+
+            // Hàng nghìn (Sen)
+            if (sen > 0) {
+                if (sen === 3) {
+                    result += "sanzen"; // 3000
+                } else if (sen === 😎 {
+                    result += "hassen"; // 8000
+                } else if (sen === 1) {
+                    result += unit_sen; // 1000 là sen
+                } else {
+                    result += ichikyuu[sen] + unit_sen; // 2000 là nisen
+                }
+            }
+
+            // Phần còn lại (0-999)
+            result += convertThreeDigits(remainder);
+            
+            return result;
+        }
+
+        // 3. Hàm chính: Chuyển đổi 0-9,999,999 (Sử dụng đơn vị Man - Vạn)
+        function convertNumberToRomaji(number) {
+            number = parseInt(number, 10);
+            
+            if (number === 0) return ichikyuu[0]; // 0 là "rei"
+
+            // Chia thành Man (vạn - 10,000) và Unit (đơn vị 0-9999)
+            const manPart = Math.floor(number / 10000); // 0 đến 999
+            const unitPart = number % 10000;        // 0 đến 9999
+            
+            let result = "";
+
+            // Phần Man (Vạn)
+            if (manPart > 0) {
+                // 10,000 được đọc là "ichiman"
+                if (manPart === 1) {
+                    result += "ichiman";
+                } else {
+                    // 20,000 (2 man) đến 9,990,000 (999 man)
+                    let manReading = convertThreeDigits(manPart);
+                    result += manReading + unit_man;
+                }
+            }
+            
+            // Phần Unit (Đơn vị 0-9999)
+            // Chỉ đọc phần đơn vị nếu nó khác 0
+            if (unitPart > 0) {
+                result += convertFourDigits(unitPart);
+            }
+            
+            return result;
+        }
+
+        // --- HÀM XỬ LÝ SỰ KIỆN GIAO DIỆN ---
+        document.getElementById('convertButton').addEventListener('click', handleConversion);
+        document.getElementById('numberInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleConversion();
+            }
+        });
+
+        function showMessage(text, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            const messageTextSpan = messageBox.querySelector('span');
+            const messageIcon = messageBox.querySelector('i');
+
+            messageTextSpan.textContent = text;
+            messageBox.classList.remove('hidden');
+
+            if (isError) {
+                messageBox.className = 'mt-4 p-4 text-sm rounded-xl border border-red-300 bg-red-50 text-red-700 hidden';
+                messageBox.classList.remove('hidden');
+                messageIcon.className = 'fas fa-exclamation-triangle mr-2';
+            } else {
+                messageBox.className = 'mt-4 p-4 text-sm rounded-xl border border-green-300 bg-green-50 text-green-700 hidden';
+                messageBox.classList.remove('hidden');
+                messageIcon.className = 'fas fa-info-circle mr-2';
+            }
+        }
+
+        function handleConversion() {
+            const inputElement = document.getElementById('numberInput');
+            const resultBox = document.getElementById('resultBox');
+            const resultOutput = document.getElementById('resultOutput');
+            const rawInput = inputElement.value.trim();
+            
+            // Ẩn các thông báo cũ
+            document.getElementById('messageBox').classList.add('hidden');
+            resultBox.classList.add('hidden');
+
+            if (!rawInput) {
+                showMessage("Vui lòng nhập một số.", true);
+                return;
+            }
+
+            const number = parseInt(rawInput, 10);
+            
+            // Kiểm tra giới hạn và định dạng (0 đến 9,999,999)
+            if (isNaN(number) || number < 0 || number > MAX_NUMBER_LIMIT) {
+                showMessage(Số phải là số nguyên dương và nằm trong phạm vi từ 0 đến ${MAX_NUMBER_LIMIT.toLocaleString('en-US')}., true);
+                return;
+            }
+
+            // Tiến hành chuyển đổi
+            const romajiResult = convertNumberToRomaji(number);
+            
+            // Hiển thị kết quả
+            resultOutput.textContent = romajiResult;
+            resultBox.classList.remove('hidden');
+            
+            // Xóa thông báo nếu có
+            document.getElementById('messageBox').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
