@@ -16,20 +16,26 @@
         body {
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
-            /* Gradient background */
+            /* Gradient background - GIỮ NGUYÊN */
             background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-            
-            /* Thêm logo ĐH Bách Khoa Hà Nội vào background */
-            /* === ĐÂY LÀ ĐƯỜNG LINK LOGO TÔI TÌM ĐƯỢC - BẠN CÓ THỂ THAY THẾ === */
+            /* Loại bỏ background-image và opacity khỏi body */
+        }
+        
+        /* LOGO OVERLAY: Div mới để chứa logo và điều chỉnh độ mờ */
+        #logo-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i.svg/1200px-Logo_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i.svg.png'); 
             background-size: 200px; /* Kích thước logo */
             background-repeat: no-repeat; /* Không lặp lại */
-            background-position: center bottom -50px; /* Vị trí: Giữa, phía dưới, hơi dịch xuống */
-            background-attachment: fixed; /* Giữ logo cố định khi cuộn */
-            
-            /* Tùy chỉnh độ mờ và chế độ hòa trộn để logo trông hài hòa */
-            background-blend-mode: luminosity; /* Hòa trộn với màu nền */
-            opacity: 0.6; /* Điều chỉnh độ mờ của logo */
+            background-position: center bottom -50px; /* Vị trí: Giữa, phía dưới */
+            background-attachment: fixed; 
+            opacity: 0.1; /* ĐIỀU CHỈNH ĐỘ MỜ CỦA LOGO NỀN (Rất nhạt để không làm chói mắt) */
+            z-index: 1; /* Đảm bảo nó nằm dưới nội dung chính */
+            pointer-events: none; /* Quan trọng: Cho phép click xuyên qua */
         }
 
         #app-container {
@@ -38,8 +44,8 @@
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
             padding: 2.5rem;
             animation: fadeIn 0.8s ease-out;
-            position: relative; /* Đảm bảo nội dung nằm trên logo */
-            z-index: 10;
+            position: relative; 
+            z-index: 10; /* Đảm bảo nội dung chính nằm trên logo */
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -117,6 +123,9 @@
     </script>
 </head>
 <body class="flex flex-col items-center justify-center p-4">
+
+    <!-- LOGO OVERLAY - Đảm bảo logo nền hiển thị và không làm mờ nội dung -->
+    <div id="logo-overlay"></div>
 
     <div id="app-container" class="w-full max-w-lg mb-8">
         <div class="text-center mb-8">
