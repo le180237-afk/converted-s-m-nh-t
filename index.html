@@ -10,16 +10,16 @@
     
     <style>
         body {
-            font-family: 'Inter', sans-serif; /* Áp dụng font Inter */
+            font-family: 'Inter', sans-serif;
             min-height: 100vh;
-            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%); /* Nền gradient nhẹ */
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
         }
         #app-container {
             background-color: #ffffff;
-            border-radius: 1.5rem; /* Bo góc nhiều hơn */
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1); /* Đổ bóng sâu hơn */
-            padding: 2.5rem; /* Tăng padding */
-            animation: fadeIn 0.8s ease-out; /* Hiệu ứng tải trang */
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            animation: fadeIn 0.8s ease-out;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -27,34 +27,34 @@
         }
         .btn-primary {
             transition: all 0.2s ease-in-out;
-            background-image: linear-gradient(45deg, #4F46E5 0%, #6366F1 100%); /* Gradient cho button */
+            background-image: linear-gradient(45deg, #4F46E5 0%, #6366F1 100%);
             border: none;
         }
         .btn-primary:hover {
-            box-shadow: 0 8px 15px rgba(99, 102, 241, 0.4); /* Đổ bóng cho button khi hover */
-            transform: translateY(-2px); /* Nhấc button lên nhẹ */
+            box-shadow: 0 8px 15px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
         }
         .btn-primary:active {
             transform: translateY(0);
             box-shadow: none;
         }
         .input-field {
-            border: 1px solid #cbd5e1; /* Màu border xám nhạt */
+            border: 1px solid #cbd5e1;
             padding: 0.75rem 1rem;
-            border-radius: 0.75rem; /* Bo góc cho input */
+            border-radius: 0.75rem;
             transition: all 0.2s ease-in-out;
         }
         .input-field:focus {
-            border-color: #6366F1; /* Màu xanh tím khi focus */
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Đổ bóng focus */
+            border-color: #6366F1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
             outline: none;
         }
         #resultBox {
-            background-color: #e0f2fe; /* Nền xanh nhạt cho kết quả */
-            border-left: 5px solid #3b82f6; /* Viền xanh đậm hơn */
+            background-color: #e0f2fe;
+            border-left: 5px solid #3b82f6;
             border-radius: 0.75rem;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05); /* Đổ bóng inset nhẹ */
-            animation: slideIn 0.5s ease-out; /* Hiệu ứng hiển thị kết quả */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            animation: slideIn 0.5s ease-out;
         }
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -63,8 +63,8 @@
         #resultOutput {
             font-weight: 700;
             letter-spacing: 0.5px;
-            color: #1f2937; /* Màu chữ đậm hơn */
-            font-size: 2.25rem; /* Kích thước lớn hơn */
+            color: #1f2937;
+            font-size: 2.25rem;
             line-height: 1.2;
         }
         #messageBox {
@@ -132,7 +132,7 @@
     </div>
 
     <script>
-        // Cập nhật các hằng số (Romaji) cho logic chuyển đổi
+        // Các hằng số (Romaji) cho logic chuyển đổi
         const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
         const unit_hyaku = "hyaku"; // 100
         const unit_juu = "juu";     // 10
@@ -155,7 +155,7 @@
                     result += ichikyuu[h] + "byaku"; // 300 - sanbyaku
                 } else if (h === 6) {
                     result += "roppyaku"; // 600 - roppyaku
-                } else if (h === 😎 {
+                } else if (h === 8) {
                     result += "happyaku"; // 800 - happyaku
                 } else if (h === 1) {
                     result += unit_hyaku; // 100 - hyaku
@@ -193,7 +193,7 @@
             if (sen > 0) {
                 if (sen === 3) {
                     result += "sanzen"; // 3000
-                } else if (sen === 😎 {
+                } else if (sen === 8) {
                     result += "hassen"; // 8000
                 } else if (sen === 1) {
                     result += unit_sen; // 1000 là sen
@@ -287,7 +287,7 @@
             
             // Kiểm tra giới hạn và định dạng (0 đến 9,999,999)
             if (isNaN(number) || number < 0 || number > MAX_NUMBER_LIMIT) {
-                showMessage(Số phải là số nguyên dương và nằm trong phạm vi từ 0 đến ${MAX_NUMBER_LIMIT.toLocaleString('en-US')}., true);
+                showMessage(`Số phải là số nguyên dương và nằm trong phạm vi từ 0 đến ${MAX_NUMBER_LIMIT.toLocaleString('en-US')}.`, true);
                 return;
             }
 
