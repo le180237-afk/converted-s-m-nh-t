@@ -11,31 +11,33 @@
     <!-- Tải Tailwind CSS để tạo giao diện đẹp và responsive --><script src="https://cdn.tailwindcss.com"></script>
     <!-- Tải Google Fonts: Inter cho typography hiện đại --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tải Font Awesome cho các icon --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    
+    <!-- Thư viện Tone.js để xử lý Web Audio (cần thiết cho âm thanh TTS) --><script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
-            /* Gradient background - GIỮ NGUYÊN */
+            /* Gradient background */
             background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-            /* Loại bỏ background-image và opacity khỏi body */
         }
         
-        /* LOGO OVERLAY: Div mới để chứa logo và điều chỉnh độ mờ */
+        /* LOGO OVERLAY: Div chứa logo nền */
         #logo-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            /* Sử dụng URL logo ĐH Bách Khoa Hà Nội */
             background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Logo_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i.svg/1200px-Logo_B%C3%A1ch_khoa_H%C3%A0_N%E1%BB%99i.svg.png'); 
-            background-size: 200px; /* Kích thước logo */
-            background-repeat: no-repeat; /* Không lặp lại */
-            background-position: center bottom -50px; /* Vị trí: Giữa, phía dưới */
+            background-size: 250px; /* Tăng kích thước logo lên 250px */
+            background-repeat: no-repeat;
+            background-position: center 80%; /* Dịch logo lên giữa, hơi xuống dưới */
             background-attachment: fixed; 
-            opacity: 0.1; /* ĐIỀU CHỈNH ĐỘ MỜ CỦA LOGO NỀN (Rất nhạt để không làm chói mắt) */
-            z-index: 1; /* Đảm bảo nó nằm dưới nội dung chính */
-            pointer-events: none; /* Quan trọng: Cho phép click xuyên qua */
+            opacity: 0.3; /* Tăng độ mờ lên 30% để dễ nhìn hơn */
+            z-index: 1; 
+            pointer-events: none;
+            filter: grayscale(100%) brightness(1.2) contrast(0.8);
         }
 
         #app-container {
@@ -49,7 +51,7 @@
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 0.3; transform: translateY(0); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .btn-primary {
             transition: all 0.2s ease-in-out;
@@ -92,16 +94,22 @@
             color: #1f2937;
             font-size: 2.25rem;
             line-height: 1.2;
-            word-break: break-all; /* Đảm bảo từ dài không tràn ra ngoài */
+            word-break: break-all;
         }
         #messageBox {
             border-radius: 0.75rem;
         }
-        .copy-button {
-            transition: background-color 0.2s;
+        .control-button {
+            transition: all 0.2s;
         }
-        .copy-button:hover {
-            background-color: #3b82f6;
+        .control-button:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+        /* Style cho nút loa khi đang tải */
+        .loading-speaker {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
     </style>
     <script>
@@ -124,7 +132,7 @@
 </head>
 <body class="flex flex-col items-center justify-center p-4">
 
-    <!-- LOGO OVERLAY - Đảm bảo logo nền hiển thị và không làm mờ nội dung -->
+    <!-- LOGO OVERLAY: Vùng chứa logo nền -->
     <div id="logo-overlay"></div>
 
     <div id="app-container" class="w-full max-w-lg mb-8">
@@ -153,11 +161,19 @@
                 <p class="text-xl text-text-dark font-medium">
                     <i class="fas fa-check-circle mr-2 text-primary-indigo"></i>Kết Quả Romaji:
                 </p>
-                <!-- Nút Sao Chép --><button id="copyButton" 
-                        class="copy-button bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600 transition-colors duration-200"
-                        title="Sao chép kết quả">
-                    <i class="fas fa-copy mr-1"></i>Sao chép
-                </button>
+                <!-- Các nút điều khiển --><div class="flex space-x-2">
+                    <!-- Nút Loa (TTS) --><button id="speakerButton" 
+                            class="control-button bg-pink-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md hover:bg-pink-600 flex items-center"
+                            title="Nghe phát âm Romaji">
+                        <i class="fas fa-volume-up mr-1" id="speakerIcon"></i>
+                        <span id="speakerText">Đọc</span>
+                    </button>
+                    <!-- Nút Sao Chép --><button id="copyButton" 
+                            class="control-button bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600 flex items-center"
+                            title="Sao chép kết quả">
+                        <i class="fas fa-copy mr-1"></i>Sao chép
+                    </button>
+                </div>
             </div>
             <div id="resultOutput" class="text-text-dark"></div>
         </div>
@@ -177,119 +193,94 @@
     </footer>
 
     <script>
-        // Các hằng số (Romaji) cho logic chuyển đổi
-        const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
-        const unit_hyaku = "hyaku"; // 100
-        const unit_juu = "juu";     // 10
-        const unit_sen = "sen";     // 1,000
-        const unit_man = "man";     // 10,000
+        // --- CÀI ĐẶT API & KHAI BÁO BIẾN ---
+        const apiKey = ""; // API Key được cung cấp tự động bởi Canvas
+        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+        
+        let isSpeaking = false;
         const MAX_NUMBER_LIMIT = 9999999;
+        
+        // --- HẰNG SỐ ROMAJI CHO CHUYỂN ĐỔI ---
+        const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
+        const unit_hyaku = "hyaku"; 
+        const unit_juu = "juu";     
+        const unit_sen = "sen";     
+        const unit_man = "man";     
 
-        // 1. Hàm chuyển đổi 0-999 (hàng trăm, chục, đơn vị)
+        // ------------------------------------
+        // --- LOGIC CHUYỂN ĐỔI SỐ SANG ROMAJI ---
+        // ------------------------------------
+
         function convertThreeDigits(number) {
             if (number === 0) return "";
-            
             let parts = [];
             const h = Math.floor(number / 100);
             const j = Math.floor((number % 100) / 10);
             const d = number % 10;
 
-            // Hàng trăm (Hyaku)
             if (h > 0) {
                 let reading;
-                if (h === 3) {
-                    reading = ichikyuu[h] + "byaku"; // 300 - sanbyaku
-                } else if (h === 6) {
-                    reading = "roppyaku"; // 600 - roppyaku
-                } else if (h === 8) {
-                    reading = "happyaku"; // 800 - happyaku
-                } else if (h === 1) {
-                    reading = unit_hyaku; // 100 - hyaku
-                } else {
-                    reading = ichikyuu[h] + unit_hyaku; // 200 - nihyaku
-                }
+                if (h === 3) reading = ichikyuu[h] + "byaku"; 
+                else if (h === 6) reading = "roppyaku"; 
+                else if (h === 8) reading = "happyaku"; 
+                else if (h === 1) reading = unit_hyaku; 
+                else reading = ichikyuu[h] + unit_hyaku;
                 parts.push(reading);
             }
-
-            // Hàng chục (Juu)
             if (j > 0) {
-                let reading;
-                if (j === 1) {
-                    reading = unit_juu; // 10 - juu
-                } else {
-                    reading = ichikyuu[j] + unit_juu; // 20 - nijuu
-                }
+                let reading = (j === 1) ? unit_juu : ichikyuu[j] + unit_juu;
                 parts.push(reading);
             }
-
-            // Hàng đơn vị 
             if (d > 0) {
                 parts.push(ichikyuu[d]);
             }
-
             return parts.join(" ");
         }
 
-        // 2. Hàm chuyển đổi 0-9999 (hàng nghìn, trăm, chục, đơn vị)
         function convertFourDigits(number) {
             if (number === 0) return "";
-
-            const sen = Math.floor(number / 1000); // Hàng nghìn
-            const remainder = number % 1000;       // Hàng trăm/chục/đơn vị
+            const sen = Math.floor(number / 1000); 
+            const remainder = number % 1000;       
             let parts = [];
 
-            // Hàng nghìn (Sen)
             if (sen > 0) {
                 let reading;
-                if (sen === 3) {
-                    reading = "sanzen"; // 3000
-                } else if (sen === 8) {
-                    reading = "hassen"; // 8000
-                } else if (sen === 1) {
-                    reading = unit_sen; // 1000 là sen
-                } else {
-                    reading = ichikyuu[sen] + unit_sen; // 2000 là nisen
-                }
+                if (sen === 3) reading = "sanzen"; 
+                else if (sen === 8) reading = "hassen"; 
+                else if (sen === 1) reading = unit_sen; 
+                else reading = ichikyuu[sen] + unit_sen; 
                 parts.push(reading);
             }
 
-            // Phần còn lại (0-999)
             const remainderReading = convertThreeDigits(remainder);
             if (remainderReading) {
                 parts.push(remainderReading);
             }
-            
             return parts.join(" ");
         }
 
-        // 3. Hàm chính: Chuyển đổi 0-9,999,999 (Sử dụng đơn vị Man - Vạn)
         function convertNumberToRomaji(number) {
             number = parseInt(number, 10);
-            
-            if (number === 0) return ichikyuu[0]; // 0 là "rei"
+            if (number === 0) return ichikyuu[0];
 
-            // Chia thành Man (vạn - 10,000) và Unit (đơn vị 0-9999)
-            const manPart = Math.floor(number / 10000); // 0 đến 999
-            const unitPart = number % 10000;        // 0 đến 9999
-            
+            const manPart = Math.floor(number / 10000); 
+            const unitPart = number % 10000;        
             let parts = [];
 
-            // Phần Man (Vạn)
             if (manPart > 0) {
                 let manReading;
-                // 10,000 được đọc là "ichiman"
                 if (manPart === 1) {
-                    manReading = "ichi man"; // Đọc là ichi man (có dấu cách)
+                    manReading = "ichi man"; 
                 } else {
-                    // 20,000 (2 man) đến 9,990,000 (999 man)
-                    let baseReading = convertThreeDigits(manPart);
-                    // Base Reading đã có dấu cách (ví dụ: "kyuu hyaku kyuu juu kyuu")
-                    manReading = baseReading + " " + unit_man; // Thêm dấu cách trước "man"
+                    let baseReading = convertFourDigits(manPart); // Sửa lỗi: Phải dùng convertFourDigits
+                    if (!baseReading) { // Nếu manPart là 1000, 2000, ... thì dùng convertFourDigits
+                         baseReading = convertThreeDigits(manPart);
+                    }
+                    manReading = baseReading + " " + unit_man; 
                 }
                 parts.push(manReading);
             }
             
-            // Phần Unit (Đơn vị 0-9999)
             if (unitPart > 0) {
                 const unitReading = convertFourDigits(unitPart);
                 if (unitReading) {
@@ -297,47 +288,199 @@
                 }
             }
             
-            // Kết hợp các phần lại với một dấu cách
             return parts.join(" ");
         }
 
-        // --- HÀM XỬ LÝ SỰ KIỆN GIAO DIỆN ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const convertButton = document.getElementById('convertButton');
-            const numberInput = document.getElementById('numberInput');
-            const copyButton = document.getElementById('copyButton'); // Lấy nút Copy
+        // ------------------------------------
+        // --- LOGIC PHÁT ÂM (TEXT-TO-SPEECH) ---
+        // ------------------------------------
 
-            if (convertButton) {
-                convertButton.addEventListener('click', handleConversion);
+        // Hàm chuyển Base64 PCM thành ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
+            return bytes.buffer;
+        }
+
+        // Hàm chuyển đổi PCM (signed 16-bit, 1 channel) thành file WAV Blob
+        function pcmToWav(pcm16, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+            const blockAlign = numChannels * (bitsPerSample / 8);
             
-            if (numberInput) {
-                numberInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        handleConversion();
+            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+            const view = new DataView(buffer);
+            
+            let offset = 0;
+
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset++, str.charCodeAt(i));
+                }
+            }
+            function writeUint32(val) {
+                view.setUint32(offset, val, true);
+                offset += 4;
+            }
+            function writeUint16(val) {
+                view.setUint16(offset, val, true);
+                offset += 2;
+            }
+
+            // RIFF chunk
+            writeString('RIFF');
+            writeUint32(36 + pcm16.length * 2); // overall size
+            writeString('WAVE');
+
+            // FMT chunk
+            writeString('fmt ');
+            writeUint32(16); // subchunk size
+            writeUint16(1); // audio format (1 = PCM)
+            writeUint16(numChannels); // channels
+            writeUint32(sampleRate); // sample rate
+            writeUint32(byteRate); // byte rate
+            writeUint16(blockAlign); // block align
+            writeUint16(bitsPerSample); // bits per sample
+
+            // DATA chunk
+            writeString('data');
+            writeUint32(pcm16.length * 2); // data size
+
+            // Write PCM data
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        // Hàm chính để gọi API TTS
+        async function speakRomaji() {
+            if (isSpeaking) return;
+            isSpeaking = true;
+            
+            const resultOutput = document.getElementById('resultOutput');
+            const romajiText = resultOutput.textContent;
+            
+            const speakerButton = document.getElementById('speakerButton');
+            const speakerIcon = document.getElementById('speakerIcon');
+            const speakerText = document.getElementById('speakerText');
+
+            if (!romajiText) {
+                showMessage("Không có kết quả Romaji để đọc.", true);
+                isSpeaking = false;
+                return;
+            }
+
+            // Cập nhật trạng thái tải
+            speakerButton.classList.add('loading-speaker');
+            speakerIcon.className = 'fas fa-spinner fa-spin mr-1';
+            speakerText.textContent = 'Đang tải...';
+            document.getElementById('messageBox').classList.add('hidden');
+            
+            // Yêu cầu API đọc Romaji bằng giọng Nhật
+            const payload = {
+                contents: [{
+                    parts: [{ 
+                        // Prompt model đọc Romaji. Thêm thẻ ngôn ngữ để API biết phát âm tiếng Nhật
+                        text: `Read the Japanese number: <lang xml:lang="ja-JP">${romajiText}</lang>` 
+                    }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Puck" } // Giọng Puck (Upbeat) nghe tự nhiên
+                        }
                     }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            try {
+                const response = await fetch(TTS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
-            }
 
-            if (copyButton) {
-                copyButton.addEventListener('click', copyResult); // Gán sự kiện cho nút Copy
-            }
-        });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+                    // Trích xuất sample rate từ mimetype (ví dụ: audio/L16;rate=24000)
+                    const rateMatch = mimeType.match(/rate=(\d+)/);
+                    if (!rateMatch || rateMatch.length < 2) {
+                        throw new Error("Không tìm thấy Sample Rate trong MimeType.");
+                    }
+                    const sampleRate = parseInt(rateMatch[1], 10);
+                    
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    // API trả về PCM16 (Int16Array)
+                    const pcm16 = new Int16Array(pcmData);
+                    
+                    // Chuyển đổi PCM sang WAV Blob
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    // Tạo và phát Audio
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+
+                    // Cập nhật trạng thái: Đang phát
+                    speakerIcon.className = 'fas fa-volume-up mr-1 text-green-500';
+                    speakerText.textContent = 'Đang phát...';
+                    
+                    audio.onended = () => {
+                        // Kết thúc phát, quay lại trạng thái bình thường
+                        URL.revokeObjectURL(audioUrl);
+                        speakerIcon.className = 'fas fa-volume-up mr-1';
+                        speakerText.textContent = 'Đọc';
+                        speakerButton.classList.remove('loading-speaker');
+                        isSpeaking = false;
+                    };
+                    
+                } else {
+                    throw new Error("Dữ liệu âm thanh không hợp lệ hoặc bị thiếu.");
+                }
+
+            } catch (error) {
+                console.error("Lỗi TTS:", error);
+                showMessage("Lỗi: Không thể phát âm thanh. Vui lòng thử lại sau.", true);
+                
+                // Quay lại trạng thái bình thường
+                speakerIcon.className = 'fas fa-volume-up mr-1';
+                speakerText.textContent = 'Đọc';
+                speakerButton.classList.remove('loading-speaker');
+                isSpeaking = false;
+            }
+        }
+
+        // ------------------------------------
+        // --- HÀM XỬ LÝ SỰ KIỆN GIAO DIỆN ---
+        // ------------------------------------
+        
         // Hàm hiển thị thông báo
         function showMessage(text, isError = false) {
             const messageBox = document.getElementById('messageBox');
             const messageTextSpan = document.getElementById('messageText').querySelector('span');
             const messageIcon = document.getElementById('messageText').querySelector('i');
             
-            if (!messageBox || !messageTextSpan || !messageIcon) {
-                console.error("Không tìm thấy các phần tử thông báo.");
-                return;
-            }
+            if (!messageBox || !messageTextSpan || !messageIcon) return;
 
             messageTextSpan.textContent = text;
-            
-            // Đặt lại các class cơ bản
             messageBox.className = 'mt-4 p-4 text-sm rounded-xl border';
             messageBox.classList.remove('hidden');
 
@@ -349,7 +492,6 @@
                 messageIcon.className = 'fas fa-info-circle mr-2';
             }
 
-            // Tự động ẩn thông báo thành công (trừ lỗi)
             if (!isError) {
                 setTimeout(() => {
                     messageBox.classList.add('hidden');
@@ -371,7 +513,6 @@
 
                 const rawInput = inputElement.value.trim();
                 
-                // Ẩn các thông báo cũ và kết quả
                 document.getElementById('messageBox').classList.add('hidden');
                 resultBox.classList.add('hidden');
 
@@ -382,36 +523,29 @@
 
                 const number = parseInt(rawInput, 10);
                 
-                // Kiểm tra giới hạn và định dạng (0 đến 9,999,999)
                 if (isNaN(number) || number < 0 || number > MAX_NUMBER_LIMIT) {
                     showMessage(`Số phải là số nguyên dương và nằm trong phạm vi từ 0 đến ${MAX_NUMBER_LIMIT.toLocaleString('en-US')}.`, true);
                     return;
                 }
 
-                // Tiến hành chuyển đổi
                 const romajiResult = convertNumberToRomaji(number);
                 
-                // Hiển thị kết quả
                 resultOutput.textContent = romajiResult;
                 resultBox.classList.remove('hidden');
                 
-                // Xóa thông báo nếu có
                 document.getElementById('messageBox').classList.add('hidden');
 
             } catch (error) {
-                // Thêm cơ chế bắt lỗi để in ra Console nếu có lỗi logic xảy ra
                 console.error("Lỗi trong quá trình chuyển đổi:", error);
                 showMessage("Đã xảy ra lỗi hệ thống trong quá trình chuyển đổi. Vui lòng kiểm tra Console.", true);
             }
         }
 
-        // Hàm Sao chép kết quả
         function copyResult() {
             const resultOutput = document.getElementById('resultOutput');
             const textToCopy = resultOutput.textContent;
 
             if (textToCopy) {
-                 // Dùng document.execCommand('copy') cho môi trường iframe
                 const tempTextArea = document.createElement('textarea');
                 tempTextArea.value = textToCopy;
                 document.body.appendChild(tempTextArea);
@@ -428,6 +562,32 @@
                 showMessage("Không có kết quả để sao chép.", true);
             }
         }
+        
+        // Gắn sự kiện cho các nút
+        document.addEventListener('DOMContentLoaded', () => {
+            const convertButton = document.getElementById('convertButton');
+            const numberInput = document.getElementById('numberInput');
+            const copyButton = document.getElementById('copyButton');
+            const speakerButton = document.getElementById('speakerButton'); // Nút Loa mới
+
+            convertButton.addEventListener('click', handleConversion);
+            numberInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleConversion();
+                }
+            });
+            copyButton.addEventListener('click', copyResult); 
+            
+            // Gắn sự kiện cho nút Loa
+            speakerButton.addEventListener('click', () => {
+                // Kiểm tra xem trình duyệt có hỗ trợ Web Audio context không (Tone.js sẽ xử lý)
+                if (Tone.context.state !== 'running') {
+                    Tone.context.resume().then(speakRomaji);
+                } else {
+                    speakRomaji();
+                }
+            });
+        });
     </script>
 </body>
 </html>
