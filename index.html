@@ -66,9 +66,16 @@
             color: #1f2937;
             font-size: 2.25rem;
             line-height: 1.2;
+            word-break: break-all; /* Đảm bảo từ dài không tràn ra ngoài */
         }
         #messageBox {
             border-radius: 0.75rem;
+        }
+        .copy-button {
+            transition: background-color 0.2s;
+        }
+        .copy-button:hover {
+            background-color: #3b82f6;
         }
     </style>
     <script>
@@ -89,9 +96,9 @@
         }
     </script>
 </head>
-<body class="flex items-center justify-center p-4">
+<body class="flex flex-col items-center justify-center p-4">
 
-    <div id="app-container" class="w-full max-w-lg">
+    <div id="app-container" class="w-full max-w-lg mb-8">
         <div class="text-center mb-8">
             <i class="fas fa-language text-primary-indigo text-5xl mb-4"></i> 
             <h1 class="text-4xl font-extrabold text-text-dark mb-3">Romaji Converter</h1>
@@ -115,9 +122,17 @@
 
         <!-- Khu vực hiển thị kết quả -->
         <div id="resultBox" class="p-6 mt-6 hidden">
-            <p class="text-xl text-text-dark font-medium mb-3">
-                <i class="fas fa-check-circle mr-2 text-primary-indigo"></i>Kết Quả Romaji:
-            </p>
+            <div class="flex justify-between items-start mb-3">
+                <p class="text-xl text-text-dark font-medium">
+                    <i class="fas fa-check-circle mr-2 text-primary-indigo"></i>Kết Quả Romaji:
+                </p>
+                <!-- Nút Sao Chép -->
+                <button id="copyButton" 
+                        class="copy-button bg-blue-500 text-white text-sm font-semibold px-3 py-1 rounded-full shadow-md hover:bg-blue-600 transition-colors duration-200"
+                        title="Sao chép kết quả">
+                    <i class="fas fa-copy mr-1"></i>Sao chép
+                </button>
+            </div>
             <div id="resultOutput" class="text-text-dark"></div>
         </div>
 
@@ -131,6 +146,12 @@
         
     </div>
 
+    <!-- Khu vực Footer (Thông tin cá nhân) -->
+    <footer class="text-center mt-6 text-text-light text-sm p-4 w-full max-w-lg">
+        <p class="font-bold text-text-dark mb-1">ĐH Bách Khoa Hà Nội</p>
+        <p>Phát triển bởi: Lợi Lê IT E6</p>
+    </footer>
+
     <script>
         // Các hằng số (Romaji) cho logic chuyển đổi
         const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
@@ -140,45 +161,54 @@
         const unit_man = "man";     // 10,000
         const MAX_NUMBER_LIMIT = 9999999;
 
+        // Hàm tiện ích để thêm dấu cách nếu chuỗi không rỗng
+        function appendWithSpace(base, unit) {
+            return base + (base.length > 0 ? " " : "") + unit;
+        }
+
         // 1. Hàm chuyển đổi 0-999 (hàng trăm, chục, đơn vị)
         function convertThreeDigits(number) {
             if (number === 0) return "";
             
-            let result = "";
+            let parts = [];
             const h = Math.floor(number / 100);
             const j = Math.floor((number % 100) / 10);
             const d = number % 10;
 
             // Hàng trăm (Hyaku)
             if (h > 0) {
+                let reading;
                 if (h === 3) {
-                    result += ichikyuu[h] + "byaku"; // 300 - sanbyaku
+                    reading = ichikyuu[h] + "byaku"; // 300 - sanbyaku
                 } else if (h === 6) {
-                    result += "roppyaku"; // 600 - roppyaku
+                    reading = "roppyaku"; // 600 - roppyaku
                 } else if (h === 8) {
-                    result += "happyaku"; // 800 - happyaku
+                    reading = "happyaku"; // 800 - happyaku
                 } else if (h === 1) {
-                    result += unit_hyaku; // 100 - hyaku
+                    reading = unit_hyaku; // 100 - hyaku
                 } else {
-                    result += ichikyuu[h] + unit_hyaku; // 200 - nihyaku
+                    reading = ichikyuu[h] + unit_hyaku; // 200 - nihyaku
                 }
+                parts.push(reading);
             }
 
             // Hàng chục (Juu)
             if (j > 0) {
+                let reading;
                 if (j === 1) {
-                    result += unit_juu; // 10 - juu
+                    reading = unit_juu; // 10 - juu
                 } else {
-                    result += ichikyuu[j] + unit_juu; // 20 - nijuu
+                    reading = ichikyuu[j] + unit_juu; // 20 - nijuu
                 }
+                parts.push(reading);
             }
 
             // Hàng đơn vị 
             if (d > 0) {
-                result += ichikyuu[d];
+                parts.push(ichikyuu[d]);
             }
 
-            return result;
+            return parts.join(" ");
         }
 
         // 2. Hàm chuyển đổi 0-9999 (hàng nghìn, trăm, chục, đơn vị)
@@ -187,25 +217,30 @@
 
             const sen = Math.floor(number / 1000); // Hàng nghìn
             const remainder = number % 1000;       // Hàng trăm/chục/đơn vị
-            let result = "";
+            let parts = [];
 
             // Hàng nghìn (Sen)
             if (sen > 0) {
+                let reading;
                 if (sen === 3) {
-                    result += "sanzen"; // 3000
+                    reading = "sanzen"; // 3000
                 } else if (sen === 8) {
-                    result += "hassen"; // 8000
+                    reading = "hassen"; // 8000
                 } else if (sen === 1) {
-                    result += unit_sen; // 1000 là sen
+                    reading = unit_sen; // 1000 là sen
                 } else {
-                    result += ichikyuu[sen] + unit_sen; // 2000 là nisen
+                    reading = ichikyuu[sen] + unit_sen; // 2000 là nisen
                 }
+                parts.push(reading);
             }
 
             // Phần còn lại (0-999)
-            result += convertThreeDigits(remainder);
+            const remainderReading = convertThreeDigits(remainder);
+            if (remainderReading) {
+                parts.push(remainderReading);
+            }
             
-            return result;
+            return parts.join(" ");
         }
 
         // 3. Hàm chính: Chuyển đổi 0-9,999,999 (Sử dụng đơn vị Man - Vạn)
@@ -218,37 +253,40 @@
             const manPart = Math.floor(number / 10000); // 0 đến 999
             const unitPart = number % 10000;        // 0 đến 9999
             
-            let result = "";
+            let parts = [];
 
             // Phần Man (Vạn)
             if (manPart > 0) {
+                let manReading;
                 // 10,000 được đọc là "ichiman"
                 if (manPart === 1) {
-                    result += "ichiman";
+                    manReading = "ichi man"; // Thêm dấu cách sau "ichi"
                 } else {
                     // 20,000 (2 man) đến 9,990,000 (999 man)
-                    let manReading = convertThreeDigits(manPart);
-                    result += manReading + unit_man;
+                    let baseReading = convertThreeDigits(manPart);
+                    manReading = baseReading + " " + unit_man; // Thêm dấu cách trước "man"
                 }
+                parts.push(manReading);
             }
             
             // Phần Unit (Đơn vị 0-9999)
-            // Chỉ đọc phần đơn vị nếu nó khác 0
             if (unitPart > 0) {
-                // Nếu unitPart là 1000, 2000, 3000... thì convertFourDigits sẽ trả về sen, nisen, sanzen...
-                // Ví dụ: 10060 -> ichiman + rokujuu
-                // Ví dụ: 15000 -> ichiman + gosen
-                result += convertFourDigits(unitPart);
+                const unitReading = convertFourDigits(unitPart);
+                if (unitReading) {
+                    parts.push(unitReading);
+                }
             }
             
-            return result;
+            // Kết hợp các phần lại với một dấu cách
+            return parts.join(" ");
         }
 
         // --- HÀM XỬ LÝ SỰ KIỆN GIAO DIỆN ---
         document.addEventListener('DOMContentLoaded', () => {
             const convertButton = document.getElementById('convertButton');
             const numberInput = document.getElementById('numberInput');
-            
+            const copyButton = document.getElementById('copyButton'); // Lấy nút Copy
+
             if (convertButton) {
                 convertButton.addEventListener('click', handleConversion);
             }
@@ -260,9 +298,13 @@
                     }
                 });
             }
+
+            if (copyButton) {
+                copyButton.addEventListener('click', copyResult); // Gán sự kiện cho nút Copy
+            }
         });
 
-
+        // Hàm hiển thị thông báo
         function showMessage(text, isError = false) {
             const messageBox = document.getElementById('messageBox');
             const messageTextSpan = document.getElementById('messageText').querySelector('span');
@@ -277,6 +319,7 @@
             
             // Đặt lại các class cơ bản
             messageBox.className = 'mt-4 p-4 text-sm rounded-xl border';
+            messageBox.classList.remove('hidden');
 
             if (isError) {
                 messageBox.classList.add('border-red-300', 'bg-red-50', 'text-red-700');
@@ -285,7 +328,13 @@
                 messageBox.classList.add('border-green-300', 'bg-green-50', 'text-green-700');
                 messageIcon.className = 'fas fa-info-circle mr-2';
             }
-            messageBox.classList.remove('hidden');
+
+            // Tự động ẩn thông báo thành công (trừ lỗi)
+            if (!isError) {
+                setTimeout(() => {
+                    messageBox.classList.add('hidden');
+                }, 3000);
+            }
         }
 
         function handleConversion() {
@@ -302,7 +351,7 @@
 
                 const rawInput = inputElement.value.trim();
                 
-                // Ẩn các thông báo cũ
+                // Ẩn các thông báo cũ và kết quả
                 document.getElementById('messageBox').classList.add('hidden');
                 resultBox.classList.add('hidden');
 
@@ -333,6 +382,30 @@
                 // Thêm cơ chế bắt lỗi để in ra Console nếu có lỗi logic xảy ra
                 console.error("Lỗi trong quá trình chuyển đổi:", error);
                 showMessage("Đã xảy ra lỗi hệ thống trong quá trình chuyển đổi. Vui lòng kiểm tra Console.", true);
+            }
+        }
+
+        // Hàm Sao chép kết quả
+        function copyResult() {
+            const resultOutput = document.getElementById('resultOutput');
+            const textToCopy = resultOutput.textContent;
+
+            if (textToCopy) {
+                 // Dùng document.execCommand('copy') cho môi trường iframe
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = textToCopy;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    showMessage("Đã sao chép kết quả Romaji vào clipboard!", false);
+                } catch (err) {
+                    console.error('Không thể sao chép:', err);
+                    showMessage("Lỗi: Không thể sao chép kết quả. Vui lòng thử thủ công.", true);
+                }
+                document.body.removeChild(tempTextArea);
+            } else {
+                showMessage("Không có kết quả để sao chép.", true);
             }
         }
     </script>
