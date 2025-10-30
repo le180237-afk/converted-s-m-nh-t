@@ -99,31 +99,84 @@
       }
       
       /* Giữ lại style cũ cho các thành phần con nếu có */
-      .input-field {
-          padding: 10px;
-          border: 1px solid #ccc;
-          border-radius: 8px;
-          outline: none;
-          transition: border-color 0.3s, box-shadow 0.3s;
-      }
-      .input-field:focus {
-          border-color: #6366F1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
-      }
-      .btn-primary {
-          background-color: #6366F1;
-          transition: background-color 0.3s, transform 0.2s;
-      }
-      .btn-primary:hover {
-          background-color: #4f46e5;
-          transform: translateY(-2px);
-      }
-      .control-button {
-          transition: all 0.2s;
-      }
-      .control-button:hover {
-          transform: scale(1.05);
-      }
+.input-field {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.input-field:focus {
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+}
+.btn-primary {
+    background-color: #6366F1;
+    transition: background-color 0.3s, transform 0.2s;
+}
+.btn-primary:hover {
+    background-color: #4f46e5;
+    transform: translateY(-2px);
+}
+.control-button {
+    transition: all 0.2s;
+}
+.control-button:hover {
+    transform: scale(1.05);
+}
+
+/* Tùy chỉnh cho Khu vực Kết quả (Kết quả Nổi Bật) */
+#resultBox {
+    /* Đảm bảo kết quả nổi lên trên nền trắng của app-container */
+    position: relative;
+    z-index: 3;
+    
+    /* Box chung */
+    background: linear-gradient(135deg, #eef2ff 0%, #f6f7ff 100%); /* Nền gradient nhẹ */
+    border: 1px solid #c3dafe;
+    border-radius: 15px;
+    padding: 25px; /* Tăng padding */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    
+    /* Thêm hiệu ứng nổi bật khi hiển thị */
+    transition: all 0.5s ease-in-out;
+    transform: translateY(0);
+}
+
+/* Kiểu chữ cho kết quả Romaji */
+#resultOutput {
+    font-family: 'Inter', sans-serif;
+    font-size: 38px; /* Kích thước lớn hơn */
+    font-weight: 900; /* Rất đậm */
+    color: #4f46e5; /* Màu Indigo đậm - trùng màu nút Chuyển Đổi */
+    text-align: center;
+    padding: 10px 0;
+    
+    /* Hiệu ứng Glow/Shadow cho chữ */
+    text-shadow: 
+        0 0 2px rgba(79, 70, 229, 0.5), /* Bóng mờ nhẹ */
+        0 0 10px rgba(79, 70, 229, 0.2); /* Bóng tỏa sáng */
+    
+    /* Đảm bảo chữ Romaji không bị ngắt quãng không cần thiết */
+    word-break: break-all;
+    line-height: 1.2;
+}
+
+/* Tùy chỉnh nút Loa/Sao Chép */
+#speakerButton, #copyButton {
+    transform: scale(1.1); /* Làm nút lớn hơn một chút */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Thêm hiệu ứng động nhẹ khi kết quả hiện ra (tùy chọn) */
+@keyframes fadeInSlideUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#resultBox:not(.hidden) {
+    animation: fadeInSlideUp 0.5s ease-out;
+}
     </style>
     <script>
         tailwind.config = {
