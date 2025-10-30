@@ -108,8 +108,13 @@
         }
         /* Style cho nút loa khi đang tải */
         .loading-speaker {
-            opacity: 0.5;
+            opacity: 0.7;
             cursor: not-allowed;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
         }
     </style>
     <script>
@@ -199,6 +204,7 @@
         
         let isSpeaking = false;
         const MAX_NUMBER_LIMIT = 9999999;
+        const MAX_RETRIES = 3; // Số lần thử lại cho API call
         
         // --- HẰNG SỐ ROMAJI CHO CHUYỂN ĐỔI ---
         const ichikyuu = ["rei", "ichi", "ni", "san", "yon", "go", "roku", "nana", "hachi", "kyuu"];
@@ -220,7 +226,7 @@
 
             if (h > 0) {
                 let reading;
-                if (h === 3) reading = ichikyuu[h] + "byaku"; 
+                if (h === 3) reading = "sanbyaku"; 
                 else if (h === 6) reading = "roppyaku"; 
                 else if (h === 8) reading = "happyaku"; 
                 else if (h === 1) reading = unit_hyaku; 
@@ -267,20 +273,24 @@
             const unitPart = number % 10000;        
             let parts = [];
 
+            // PHẦN MAN (VẠN)
             if (manPart > 0) {
                 let manReading;
+                
+                // manPart tối đa là 999 (9,999,999 / 10,000 = 999.9999)
+
                 if (manPart === 1) {
-                    manReading = "ichi man"; 
+                    // 10,000 - 19,999 => ichiman
+                    manReading = "ichiman";
                 } else {
-                    let baseReading = convertFourDigits(manPart); // Sửa lỗi: Phải dùng convertFourDigits
-                    if (!baseReading) { // Nếu manPart là 1000, 2000, ... thì dùng convertFourDigits
-                         baseReading = convertThreeDigits(manPart);
-                    }
-                    manReading = baseReading + " " + unit_man; 
+                    // > 1 vạn (vd: 35 vạn, 123 vạn)
+                    let baseReading = convertThreeDigits(manPart); // 0 đến 999
+                    manReading = baseReading + " " + unit_man;
                 }
                 parts.push(manReading);
             }
-            
+
+            // Phần Unit (Đơn vị 0-9999)
             if (unitPart > 0) {
                 const unitReading = convertFourDigits(unitPart);
                 if (unitReading) {
@@ -288,14 +298,18 @@
                 }
             }
             
-            return parts.join(" ");
+            let result = parts.join(" ").trim();
+            
+            // Thay thế tất cả "ichi man" thành "ichiman"
+            result = result.replace(/ichi man/g, "ichiman");
+
+            return result;
         }
 
         // ------------------------------------
         // --- LOGIC PHÁT ÂM (TEXT-TO-SPEECH) ---
         // ------------------------------------
 
-        // Hàm chuyển Base64 PCM thành ArrayBuffer
         function base64ToArrayBuffer(base64) {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -306,7 +320,6 @@
             return bytes.buffer;
         }
 
-        // Hàm chuyển đổi PCM (signed 16-bit, 1 channel) thành file WAV Blob
         function pcmToWav(pcm16, sampleRate) {
             const numChannels = 1;
             const bitsPerSample = 16;
@@ -334,22 +347,22 @@
 
             // RIFF chunk
             writeString('RIFF');
-            writeUint32(36 + pcm16.length * 2); // overall size
+            writeUint32(36 + pcm16.length * 2); 
             writeString('WAVE');
 
             // FMT chunk
             writeString('fmt ');
-            writeUint32(16); // subchunk size
-            writeUint16(1); // audio format (1 = PCM)
-            writeUint16(numChannels); // channels
-            writeUint32(sampleRate); // sample rate
-            writeUint32(byteRate); // byte rate
-            writeUint16(blockAlign); // block align
-            writeUint16(bitsPerSample); // bits per sample
+            writeUint32(16); 
+            writeUint16(1); 
+            writeUint16(numChannels); 
+            writeUint32(sampleRate); 
+            writeUint32(byteRate); 
+            writeUint16(blockAlign); 
+            writeUint16(bitsPerSample); 
 
             // DATA chunk
             writeString('data');
-            writeUint32(pcm16.length * 2); // data size
+            writeUint32(pcm16.length * 2); 
 
             // Write PCM data
             for (let i = 0; i < pcm16.length; i++) {
@@ -359,11 +372,36 @@
 
             return new Blob([view], { type: 'audio/wav' });
         }
+        
+        // Hàm gọi API với cơ chế thử lại (Retry with Exponential Backoff)
+        async function fetchWithRetry(url, options, maxRetries = MAX_RETRIES) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status === 429 || response.status >= 500) {
+                        throw new Error(`Server error or rate limit (${response.status})`);
+                    }
+                    if (!response.ok) {
+                        // Throw lỗi cho các lỗi khác (ví dụ: 400 Bad Request)
+                        const errorBody = await response.text();
+                        throw new Error(`HTTP Error ${response.status}: ${errorBody}`);
+                    }
+                    return response;
+                } catch (error) {
+                    console.error(`Fetch attempt ${i + 1} failed:`, error.message);
+                    if (i === maxRetries - 1) throw error; // Thử lại lần cuối thất bại, ném lỗi
+
+                    // Exponential Backoff: Chờ 2^i * 1000ms
+                    const delay = Math.pow(2, i) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
 
         // Hàm chính để gọi API TTS
         async function speakRomaji() {
             if (isSpeaking) return;
-            isSpeaking = true;
             
             const resultOutput = document.getElementById('resultOutput');
             const romajiText = resultOutput.textContent;
@@ -374,8 +412,22 @@
 
             if (!romajiText) {
                 showMessage("Không có kết quả Romaji để đọc.", true);
-                isSpeaking = false;
                 return;
+            }
+            
+            // --- BẮT ĐẦU PHÁT ---
+            isSpeaking = true;
+
+            // Kích hoạt Audio Context nếu chưa chạy (yêu cầu của trình duyệt)
+            if (Tone.context.state !== 'running') {
+                 try {
+                     await Tone.context.resume();
+                 } catch (e) {
+                     console.error("Lỗi khi resume AudioContext:", e);
+                     showMessage("Lỗi kích hoạt âm thanh. Vui lòng bấm lại nút Đọc.", true);
+                     isSpeaking = false;
+                     return;
+                 }
             }
 
             // Cập nhật trạng thái tải
@@ -384,19 +436,23 @@
             speakerText.textContent = 'Đang tải...';
             document.getElementById('messageBox').classList.add('hidden');
             
+            // CẢI TIẾN: Giảm nén Romaji: Thay thế khoảng trắng bằng dấu gạch ngang (-)
+            let ttsInput = romajiText.trim().replace(/\s+/g, '-'); 
+            
             // Yêu cầu API đọc Romaji bằng giọng Nhật
             const payload = {
                 contents: [{
                     parts: [{ 
-                        // Prompt model đọc Romaji. Thêm thẻ ngôn ngữ để API biết phát âm tiếng Nhật
-                        text: `Read the Japanese number: <lang xml:lang="ja-JP">${romajiText}</lang>` 
+                        // SỬ DỤNG DẤU GẠCH NGANG ĐỂ API DỄ PHÂN TÁCH TỪ HƠN
+                        text: ttsInput
                     }]
                 }],
                 generationConfig: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
                         voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: "Puck" } // Giọng Puck (Upbeat) nghe tự nhiên
+                            // Giọng "Kore" (Firm)
+                            prebuiltVoiceConfig: { voiceName: "Kore" } 
                         }
                     }
                 },
@@ -404,15 +460,12 @@
             };
 
             try {
-                const response = await fetch(TTS_API_URL, {
+                // SỬ DỤNG HÀM FETCH CÓ THỬ LẠI
+                const response = await fetchWithRetry(TTS_API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
 
                 const result = await response.json();
                 const part = result?.candidates?.[0]?.content?.parts?.[0];
@@ -420,7 +473,6 @@
                 const mimeType = part?.inlineData?.mimeType;
 
                 if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
-                    // Trích xuất sample rate từ mimetype (ví dụ: audio/L16;rate=24000)
                     const rateMatch = mimeType.match(/rate=(\d+)/);
                     if (!rateMatch || rateMatch.length < 2) {
                         throw new Error("Không tìm thấy Sample Rate trong MimeType.");
@@ -428,14 +480,10 @@
                     const sampleRate = parseInt(rateMatch[1], 10);
                     
                     const pcmData = base64ToArrayBuffer(audioData);
-                    // API trả về PCM16 (Int16Array)
                     const pcm16 = new Int16Array(pcmData);
-                    
-                    // Chuyển đổi PCM sang WAV Blob
                     const wavBlob = pcmToWav(pcm16, sampleRate);
                     const audioUrl = URL.createObjectURL(wavBlob);
                     
-                    // Tạo và phát Audio
                     const audio = new Audio(audioUrl);
                     audio.play();
 
@@ -444,8 +492,8 @@
                     speakerText.textContent = 'Đang phát...';
                     
                     audio.onended = () => {
-                        // Kết thúc phát, quay lại trạng thái bình thường
                         URL.revokeObjectURL(audioUrl);
+                        // Quay lại trạng thái bình thường
                         speakerIcon.className = 'fas fa-volume-up mr-1';
                         speakerText.textContent = 'Đọc';
                         speakerButton.classList.remove('loading-speaker');
@@ -453,12 +501,23 @@
                     };
                     
                 } else {
-                    throw new Error("Dữ liệu âm thanh không hợp lệ hoặc bị thiếu.");
+                    // Bắt lỗi nếu API trả về lỗi hoặc không có audio
+                    console.error("Phản hồi API TTS bị lỗi:", result);
+                    const errorMessage = result?.candidates?.[0]?.finishReason || "Không nhận được dữ liệu âm thanh hợp lệ.";
+                    throw new Error(errorMessage);
                 }
 
             } catch (error) {
                 console.error("Lỗi TTS:", error);
-                showMessage("Lỗi: Không thể phát âm thanh. Vui lòng thử lại sau.", true);
+                
+                let displayError = "Lỗi: Không thể phát âm thanh. Vui lòng thử lại sau.";
+                if (error.message.includes("400") || error.message.includes("Bad Request")) {
+                     displayError = "Lỗi phát âm: API không thể đọc chuỗi Romaji này. (Có thể do cách viết Romaji phức tạp)";
+                } else if (error.message.includes("rate limit") || error.message.includes("429")) {
+                    displayError = "Lỗi quá tải: Hệ thống đang bận. Vui lòng chờ vài giây và thử lại.";
+                }
+
+                showMessage(displayError, true);
                 
                 // Quay lại trạng thái bình thường
                 speakerIcon.className = 'fas fa-volume-up mr-1';
@@ -568,7 +627,7 @@
             const convertButton = document.getElementById('convertButton');
             const numberInput = document.getElementById('numberInput');
             const copyButton = document.getElementById('copyButton');
-            const speakerButton = document.getElementById('speakerButton'); // Nút Loa mới
+            const speakerButton = document.getElementById('speakerButton');
 
             convertButton.addEventListener('click', handleConversion);
             numberInput.addEventListener('keydown', (e) => {
@@ -579,15 +638,10 @@
             copyButton.addEventListener('click', copyResult); 
             
             // Gắn sự kiện cho nút Loa
-            speakerButton.addEventListener('click', () => {
-                // Kiểm tra xem trình duyệt có hỗ trợ Web Audio context không (Tone.js sẽ xử lý)
-                if (Tone.context.state !== 'running') {
-                    Tone.context.resume().then(speakRomaji);
-                } else {
-                    speakRomaji();
-                }
-            });
+            speakerButton.addEventListener('click', speakRomaji);
         });
     </script>
 </body>
+</html>
+
 </html>
